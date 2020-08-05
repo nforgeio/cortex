@@ -707,6 +707,12 @@ github.com/weaveworks/common/user
 github.com/weaveworks/promrus
 # github.com/xiang90/probing v0.0.0-20190116061207-43a291ad63a2
 github.com/xiang90/probing
+# github.com/yugabyte/gocql v0.0.0-20200602185649-ef3952a45ff4
+## explicit
+github.com/yugabyte/gocql
+github.com/yugabyte/gocql/internal/lru
+github.com/yugabyte/gocql/internal/murmur
+github.com/yugabyte/gocql/internal/streams
 # go.etcd.io/bbolt v1.3.5-0.20200615073812-232d8fc87f50
 ## explicit
 go.etcd.io/bbolt

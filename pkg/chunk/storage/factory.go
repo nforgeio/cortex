@@ -17,6 +17,7 @@ import (
 	"github.com/cortexproject/cortex/pkg/chunk/azure"
 	"github.com/cortexproject/cortex/pkg/chunk/cache"
 	"github.com/cortexproject/cortex/pkg/chunk/cassandra"
+	"github.com/cortexproject/cortex/pkg/chunk/yugabyte"
 	"github.com/cortexproject/cortex/pkg/chunk/gcp"
 	"github.com/cortexproject/cortex/pkg/chunk/grpc"
 	"github.com/cortexproject/cortex/pkg/chunk/local"
@@ -66,6 +67,7 @@ type Config struct {
 	GCPStorageConfig       gcp.Config              `yaml:"bigtable"`
 	GCSConfig              gcp.GCSConfig           `yaml:"gcs"`
 	CassandraStorageConfig cassandra.Config        `yaml:"cassandra"`
+	YugabyteStorageConfig  yugabyte.Config         `yaml:"yugabyte"`
 	BoltDBConfig           local.BoltDBConfig      `yaml:"boltdb"`
 	FSConfig               local.FSConfig          `yaml:"filesystem"`
 	Swift                  openstack.SwiftConfig   `yaml:"swift"`
@@ -86,6 +88,7 @@ func (cfg *Config) RegisterFlags(f *flag.FlagSet) {
 	cfg.GCPStorageConfig.RegisterFlags(f)
 	cfg.GCSConfig.RegisterFlags(f)
 	cfg.CassandraStorageConfig.RegisterFlags(f)
+	cfg.YugabyteStorageConfig.RegisterFlags(f)
 	cfg.BoltDBConfig.RegisterFlags(f)
 	cfg.FSConfig.RegisterFlags(f)
 	cfg.DeleteStoreConfig.RegisterFlags(f)
@@ -104,6 +107,9 @@ func (cfg *Config) Validate() error {
 	}
 	if err := cfg.CassandraStorageConfig.Validate(); err != nil {
 		return errors.Wrap(err, "invalid Cassandra Storage config")
+	}
+	if err := cfg.YugabyteStorageConfig.Validate(); err != nil {
+		return errors.Wrap(err, "invalid Yugabyte Storage config")
 	}
 	if err := cfg.GCPStorageConfig.Validate(util.Logger); err != nil {
 		return errors.Wrap(err, "invalid GCP Storage Storage config")
@@ -228,12 +234,14 @@ func NewIndexClient(name string, cfg Config, schemaCfg chunk.SchemaConfig, regis
 		return gcp.NewStorageClientColumnKey(context.Background(), cfg.GCPStorageConfig, schemaCfg)
 	case "cassandra":
 		return cassandra.NewStorageClient(cfg.CassandraStorageConfig, schemaCfg, registerer)
-	case "boltdb":
+	case "yugabyte":
+		return yugabyte.NewStorageClient(cfg.YugabyteStorageConfig, schemaCfg, registerer)
+    case "boltdb":
 		return local.NewBoltDBIndexClient(cfg.BoltDBConfig)
 	case "grpc-store":
 		return grpc.NewStorageClient(cfg.GrpcConfig, schemaCfg)
 	default:
-		return nil, fmt.Errorf("Unrecognized storage client %v, choose one of: aws, cassandra, inmemory, gcp, bigtable, bigtable-hashed", name)
+		return nil, fmt.Errorf("Unrecognized storage client %v, choose one of: aws, cassandra, yugabyte, inmemory, gcp, bigtable, bigtable-hashed", name)
 	}
 }
 
@@ -265,6 +273,8 @@ func NewChunkClient(name string, cfg Config, schemaCfg chunk.SchemaConfig, regis
 		return newChunkClientFromStore(openstack.NewSwiftObjectClient(cfg.Swift, chunk.DirDelim))
 	case "cassandra":
 		return cassandra.NewObjectClient(cfg.CassandraStorageConfig, schemaCfg, registerer)
+	case "yugabyte":
+		return yugabyte.NewObjectClient(cfg.YugabyteStorageConfig, schemaCfg, registerer)
 	case "filesystem":
 		store, err := local.NewFSObjectClient(cfg.FSConfig)
 		if err != nil {
@@ -274,7 +284,7 @@ func NewChunkClient(name string, cfg Config, schemaCfg chunk.SchemaConfig, regis
 	case "grpc-store":
 		return grpc.NewStorageClient(cfg.GrpcConfig, schemaCfg)
 	default:
-		return nil, fmt.Errorf("Unrecognized storage client %v, choose one of: aws, azure, cassandra, inmemory, gcp, bigtable, bigtable-hashed, grpc-store", name)
+		return nil, fmt.Errorf("Unrecognized storage client %v, choose one of: aws, azure, cassandra, yugabyte, inmemory, gcp, bigtable, bigtable-hashed, grpc-store", name)
 	}
 }
 
@@ -309,12 +319,14 @@ func NewTableClient(name string, cfg Config, registerer prometheus.Registerer) (
 		return gcp.NewTableClient(context.Background(), cfg.GCPStorageConfig)
 	case "cassandra":
 		return cassandra.NewTableClient(context.Background(), cfg.CassandraStorageConfig, registerer)
+	case "yugabyte":
+		return yugabyte.NewTableClient(context.Background(), cfg.YugabyteStorageConfig, registerer)
 	case "boltdb":
 		return local.NewTableClient(cfg.BoltDBConfig.Directory)
 	case "grpc-store":
 		return grpc.NewTableClient(cfg.GrpcConfig)
 	default:
-		return nil, fmt.Errorf("Unrecognized storage client %v, choose one of: aws, cassandra, inmemory, gcp, bigtable, bigtable-hashed, grpc-store", name)
+		return nil, fmt.Errorf("Unrecognized storage client %v, choose one of: aws, cassandra, yugabyte, inmemory, gcp, bigtable, bigtable-hashed, grpc-store", name)
 	}
 }
 
